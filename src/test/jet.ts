@@ -10,7 +10,7 @@ test.cb('should send and receive packet', t => {
   let received = false;
 
   let server = Net.createServer(socket => {
-    let jet = new Jet(socket);
+    let jet = new Jet<any>(socket);
 
     jet.on('data', data => {
       t.deepEqual(data, testData);
@@ -21,7 +21,7 @@ test.cb('should send and receive packet', t => {
   server.listen(() => {
     let port = server.address().port;
     let socket = Net.connect(port);
-    let jet = new Jet(socket);
+    let jet = new Jet<any>(socket);
 
     jet
       .send(testData)
