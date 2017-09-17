@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Minimalist package for data packets over socket connections.",
   "main": "bld/index.js",
+  "types": "bld/index.d.ts",
   "repository": "https://github.com/vilic/socket-jet.git",
   "author": "vilicvane",
   "license": "MIT",
