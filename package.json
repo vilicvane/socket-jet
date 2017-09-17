@@ -1,0 +1,26 @@
+{
+  "name": "socket-jet",
+  "version": "0.1.0",
+  "description": "Minimalist package for data packets over socket connections.",
+  "main": "bld/index.js",
+  "repository": "https://github.com/vilic/socket-jet.git",
+  "author": "vilicvane",
+  "license": "MIT",
+  "scripts": {
+    "lint": "tslint -c tslint.json -p tsconfig.json --type-check",
+    "build": "tsc -p .",
+    "test": "ava bld/test"
+  },
+  "devDependencies": {
+    "@types/crc": "^3.4.0",
+    "@types/node": "^8.0.28",
+    "ava": "^0.22.0",
+    "tslint": "^5.7.0",
+    "tslint-language-service": "^0.9.6",
+    "typescript": "^2.5.2",
+    "vts": "^5.6.2"
+  },
+  "dependencies": {
+    "crc": "^3.4.4"
+  }
+}
