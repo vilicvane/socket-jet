@@ -42,7 +42,7 @@ export class Jet<T> extends EventEmitter {
     let id = ++this.lastId;
     let packetBuffer = build(id, data);
 
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       this.socket.write(packetBuffer, (error: any) => {
         if (error) {
           reject(error);
