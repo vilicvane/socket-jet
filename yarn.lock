@@ -44,6 +44,12 @@
   dependencies:
     arrify "^1.0.1"
 
+"@types/bson@^1.0.4":
+  version "1.0.4"
+  resolved "http://registry.npm.taobao.org/@types/bson/download/@types/bson-1.0.4.tgz#94260b6b96fa459346959c9216799d8919e95d2b"
+  dependencies:
+    "@types/node" "*"
+
 "@types/crc@^3.4.0":
   version "3.4.0"
   resolved "http://registry.npm.taobao.org/@types/crc/download/@types/crc-3.4.0.tgz#2366beb4399cd734b33e42c7ac809576e617d48a"
@@ -634,6 +640,10 @@ braces@^1.8.2:
     expand-range "^1.8.1"
     preserve "^0.2.0"
     repeat-element "^1.1.2"
+
+bson@^1.0.4:
+  version "1.0.4"
+  resolved "http://registry.npm.taobao.org/bson/download/bson-1.0.4.tgz#93c10d39eaa5b58415cbc4052f3e53e562b0b72c"
 
 buf-compare@^1.0.0:
   version "1.0.1"

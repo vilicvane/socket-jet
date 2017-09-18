@@ -20,17 +20,18 @@ test.cb('should send and receive packet', t => {
 
   server.listen(() => {
     let port = server.address().port;
-    let socket = Net.connect(port);
-    let jet = new Jet<any>(socket);
+    let socket = Net.connect({port}, () => {
+      let jet = new Jet<any>(socket);
 
-    jet
-      .send(testData)
-      .then(
-        () => {
-          t.true(received);
-          t.end();
-        },
-        t.fail,
-      );
+      jet
+        .send(testData)
+        .then(
+          () => {
+            t.true(received);
+            t.end();
+          },
+          t.fail,
+        );
+    });
   });
 });

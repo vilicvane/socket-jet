@@ -2,9 +2,14 @@ import test from 'ava';
 
 import { Parser, build, buildAck } from '../packet';
 
-let jsonPacket = {
+let primitivePacket = {
   id: 1,
-  data: {foo: 123, bar: 'abc'},
+  data: 'foobar',
+};
+
+let objectPacket = {
+  id: 1,
+  data: {foo: 123, bar: Buffer.from('abc')},
 };
 
 let rawPacket = {
@@ -12,46 +17,58 @@ let rawPacket = {
   data: Buffer.from('hello, thank you!'),
 };
 
-let jsonPacketBuffer = build(jsonPacket.id, jsonPacket.data);
-let rawPacketBuffer = build(rawPacket.id, rawPacket.data);
+let primitivePacketBuffer = build(primitivePacket.id, {data: primitivePacket.data});
+let objectPacketBuffer = build(objectPacket.id, {data: objectPacket.data});
+let rawPacketBuffer = build(rawPacket.id, {data: rawPacket.data});
 
-test.cb('should build and parse json packet', t => {
-  let parser = new Parser<typeof jsonPacket.data>();
+test.cb('should build and parse primitive packet', t => {
+  let parser = new Parser<typeof primitivePacket.data>();
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, jsonPacket);
+    t.deepEqual(packet, primitivePacket);
     t.end();
   });
 
-  parser.append(jsonPacketBuffer);
+  parser.append(primitivePacketBuffer);
 });
 
-test.cb('should build and parse json packet segments', t => {
-  let parser = new Parser<typeof jsonPacket.data>();
+test.cb('should build and parse object packet', t => {
+  let parser = new Parser<typeof objectPacket.data>();
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, jsonPacket);
+    t.deepEqual(packet, objectPacket);
     t.end();
   });
 
-  parser.append(jsonPacketBuffer.slice(0, 2));
-  parser.append(jsonPacketBuffer.slice(2, 10));
-  parser.append(jsonPacketBuffer.slice(10, 16));
-  parser.append(jsonPacketBuffer.slice(16));
+  parser.append(objectPacketBuffer);
+});
+
+test.cb('should build and parse object packet segments', t => {
+  let parser = new Parser<typeof objectPacket.data>();
+
+  parser.on('packet', packet => {
+    t.deepEqual(packet, objectPacket);
+    t.end();
+  });
+
+  parser.append(objectPacketBuffer.slice(0, 2));
+  parser.append(objectPacketBuffer.slice(2, 10));
+  parser.append(objectPacketBuffer.slice(10, 16));
+  parser.append(objectPacketBuffer.slice(16));
 
   t.is(parser.pending, 0);
 });
 
-test.cb('should build and parse json even in dirty state', t => {
-  let parser = new Parser<typeof jsonPacket.data>();
+test.cb('should build and parse object packet even in dirty state', t => {
+  let parser = new Parser<typeof objectPacket.data>();
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, jsonPacket);
+    t.deepEqual(packet, objectPacket);
     t.end();
   });
 
   parser.append(Buffer.from('hello, thank you!'));
-  parser.append(jsonPacketBuffer);
+  parser.append(objectPacketBuffer);
 });
 
 test.cb('should build and parse raw packet', t => {

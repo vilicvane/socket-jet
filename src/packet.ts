@@ -1,6 +1,9 @@
 import { EventEmitter } from 'events';
 
+import { BSON } from 'bson';
 import { crc16, crc32 } from 'crc';
+
+const bson = new BSON();
 
 const HEAD_LENGTH = 20;
 const MAGIC = Buffer.from('jet!');
@@ -33,6 +36,7 @@ export const enum Type {
   ack = 0x00,
   raw = 0x01,
   json = 0x02,
+  bson = 0x03,
 }
 
 interface Head {
@@ -146,28 +150,34 @@ export class Parser<T> extends EventEmitter {
 
     this.buffer = buffer.slice(bodyLength);
 
-    switch (type) {
-      case Type.raw:
-        this.emit('packet', {id, data: body as any});
-        break;
-      case Type.json:
-        this.parseJSON(id, body);
-        break;
-      case Type.ack:
-        this.emit('ack', {id});
-        break;
-    }
-
-    return true;
-  }
-
-  private parseJSON(id: number, buffer: Buffer): void {
     try {
-      let data = JSON.parse(buffer.toString());
-      this.emit('packet', {id, data});
+      switch (type) {
+        case Type.ack:
+          this.emit('ack', {id});
+          break;
+        case Type.raw:
+          this.emit('packet', {id, data: body as any});
+          break;
+        case Type.json:
+          this.emit('packet', {
+            id,
+            data: JSON.parse(buffer.toString()),
+          });
+          break;
+        case Type.bson:
+          this.emit('packet', {
+            id,
+            data: bson.deserialize(buffer, {
+              promoteBuffers: true,
+            }),
+          });
+          break;
+      }
     } catch (error) {
       this.emit('error', error);
     }
+
+    return true;
   }
 }
 
@@ -181,22 +191,32 @@ export interface Parser<T> {
   emit(event: 'error', error: Error): boolean;
 }
 
-export function build(id: number, data: any, type?: Type): Buffer {
+export interface BuildOptions {
+  data?: any;
+  type?: Type;
+}
+
+export function build(id: number, {data, type}: BuildOptions): Buffer {
   if (type === undefined) {
-    type = Buffer.isBuffer(data) ? Type.raw : Type.json;
+    type = Buffer.isBuffer(data) ?
+      Type.raw : isPrimitive(data) ?
+      Type.json : Type.bson;
   }
 
   let body: Buffer;
 
   switch (type) {
+    case Type.ack:
+      body = Buffer.from([]);
+      break;
     case Type.raw:
       body = data;
       break;
     case Type.json:
       body = Buffer.from(JSON.stringify(data));
       break;
-    case Type.ack:
-      body = Buffer.from([]);
+    case Type.bson:
+      body = bson.serialize(data);
       break;
     default:
       throw new Error(`Invalid packet type ${type}`);
@@ -222,5 +242,17 @@ export function build(id: number, data: any, type?: Type): Buffer {
 }
 
 export function buildAck(id: number): Buffer {
-  return build(id, undefined, Type.ack);
+  return build(id, {type: Type.ack});
+}
+
+function isPrimitive(value: any): boolean {
+  switch (typeof value) {
+    case 'string':
+    case 'number':
+    case 'boolean':
+    case 'undefined':
+      return true;
+  }
+
+  return value === null;
 }
