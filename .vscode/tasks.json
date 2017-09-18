@@ -5,6 +5,10 @@
       "taskName": "build",
       "type": "shell",
       "command": "yarn tsc -w -p .",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "isBackground": true,
       "problemMatcher": "$tsc-watch"
     }
