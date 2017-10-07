@@ -5,6 +5,17 @@
 
 Minimalist package for data packets over socket connections.
 
+## Features
+
+### Implemented
+
+- `Jet#send()` returns a promise that will wait for ack.
+- Encryption support based on Node.js `crypto` module.
+
+### Upcoming
+
+- `PowerJet` for remote function call.
+
 ## Installation
 
 ```sh
