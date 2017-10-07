@@ -1,11 +1,12 @@
 import { EventEmitter } from 'events';
 import { Socket } from 'net';
 
-import { Ack, Packet, Parser, build, buildAck } from './packet';
+import { Ack, CryptoOptions, Packet, Parser, Type, build } from './packet';
 
 type Resolver = () => void;
 
 export interface JetOptions {
+  crypto?: CryptoOptions;
   timeout?: number;
 }
 
@@ -16,16 +17,18 @@ export class Jet<T> extends EventEmitter {
   private resolverMap = new Map<number, Resolver>();
 
   private timeout: number;
+  private cryptoOptions: CryptoOptions | undefined;
 
   constructor(
     public socket: Socket,
     {
+      crypto: cryptoOptions,
       timeout = 30 * 1000,
     }: JetOptions = {},
   ) {
     super();
 
-    let parser = new Parser<T>();
+    let parser = new Parser<T>({crypto: cryptoOptions});
 
     socket.on('data', data => parser.append(data));
 
@@ -35,12 +38,13 @@ export class Jet<T> extends EventEmitter {
 
     this.parser = parser;
 
+    this.cryptoOptions = cryptoOptions;
     this.timeout = timeout;
   }
 
   async send(data: T): Promise<void> {
     let id = ++this.lastId;
-    let packetBuffer = build(id, {data});
+    let packetBuffer = build(id, Type.packet, data, {crypto: this.cryptoOptions});
 
     await new Promise<void>((resolve, reject) => {
       this.socket.write(packetBuffer, (error: any) => {
@@ -75,7 +79,7 @@ export class Jet<T> extends EventEmitter {
   }
 
   private handlePacket({id, data}: Packet<T>): void {
-    let ackBuffer = buildAck(id);
+    let ackBuffer = build(id, Type.ack, {crypto: this.cryptoOptions});
 
     this.socket.write(ackBuffer);
 

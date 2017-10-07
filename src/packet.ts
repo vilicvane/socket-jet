@@ -1,30 +1,20 @@
+import * as Crypto from 'crypto';
 import { EventEmitter } from 'events';
 
 import { BSON } from 'bson';
-import { crc16, crc32 } from 'crc';
 
 const bson = new BSON();
 
-const HEAD_LENGTH = 20;
+const HEAD_LENGTH = 8;
 const MAGIC = Buffer.from('jet!');
-const VERSION = 1;
 
 // magic        4 bytes   'jet!'
-// head crc16   2 bytes   uint16be
-// version      1 bytes   uint8
-// type         1 bytes   uint8
-// id           4 bytes   uint32be
-// body crc32   4 bytes   uint32be
 // body length  4 bytes   uint32be
+// body
 
 const enum HeadOffset {
   magic = 0,
-  crc = 4,
-  version = 6,
-  type = 7,
-  id = 8,
-  bodyCRC = 12,
-  bodyLength = 16,
+  bodyLength = 4,
 }
 
 const enum State {
@@ -32,28 +22,33 @@ const enum State {
   body,
 }
 
-export const enum Type {
-  ack = 0x00,
-  raw = 0x01,
-  json = 0x02,
-  bson = 0x03,
-}
-
 interface Head {
-  version: number;
-  type: Type;
-  id: number;
-  bodyCRC: number;
   bodyLength: number;
 }
 
+export const enum Type {
+  ack = 0,
+  packet = 1,
+}
+
 export interface Packet<T> {
+  type: Type.packet;
   id: number;
   data: T;
 }
 
 export interface Ack {
+  type: Type.ack;
   id: number;
+}
+
+export interface CryptoOptions {
+  algorithm: string;
+  password: string | Buffer;
+}
+
+export interface ParserOptions {
+  crypto?: CryptoOptions;
 }
 
 export class Parser<T> extends EventEmitter {
@@ -62,6 +57,12 @@ export class Parser<T> extends EventEmitter {
   private head: Head | undefined;
 
   private buffer = Buffer.from([]);
+
+  constructor(
+    private options: ParserOptions = {},
+  ) {
+    super();
+ }
 
   get pending(): number {
     return this.buffer.length;
@@ -110,22 +111,10 @@ export class Parser<T> extends EventEmitter {
       }
     }
 
-    let content = buffer.slice(HeadOffset.version, HEAD_LENGTH);
-    let crc = buffer.readUInt16BE(HeadOffset.crc);
-
-    if (crc !== crc16(content)) {
-      this.buffer = buffer.slice(MAGIC.length);
-      return true;
-    }
-
-    let version = buffer.readUInt8(HeadOffset.version);
-    let type = buffer.readUInt8(HeadOffset.type) as Type;
-    let id = buffer.readUInt32BE(HeadOffset.id);
-    let bodyCRC = buffer.readUInt32BE(HeadOffset.bodyCRC);
     let bodyLength = buffer.readUInt32BE(HeadOffset.bodyLength);
 
     this.buffer = buffer.slice(HEAD_LENGTH);
-    this.head = {version, type, id, bodyCRC, bodyLength};
+    this.head = {bodyLength};
     this.state = State.body;
 
     return true;
@@ -133,7 +122,7 @@ export class Parser<T> extends EventEmitter {
 
   private parseBody(): boolean {
     let buffer = this.buffer;
-    let {type, id, bodyCRC, bodyLength} = this.head!;
+    let {bodyLength} = this.head!;
 
     if (buffer.length < bodyLength) {
       return false;
@@ -144,33 +133,17 @@ export class Parser<T> extends EventEmitter {
 
     let body = buffer.slice(0, bodyLength);
 
-    if (bodyCRC !== crc32(body)) {
-      return true;
-    }
-
     this.buffer = buffer.slice(bodyLength);
 
     try {
-      switch (type) {
+      let object = this._parseBody(body);
+
+      switch (object.type) {
         case Type.ack:
-          this.emit('ack', {id});
+          this.emit('ack', object);
           break;
-        case Type.raw:
-          this.emit('packet', {id, data: body as any});
-          break;
-        case Type.json:
-          this.emit('packet', {
-            id,
-            data: JSON.parse(buffer.toString()),
-          });
-          break;
-        case Type.bson:
-          this.emit('packet', {
-            id,
-            data: bson.deserialize(buffer, {
-              promoteBuffers: true,
-            }),
-          });
+        case Type.packet:
+          this.emit('packet', object);
           break;
       }
     } catch (error) {
@@ -178,6 +151,17 @@ export class Parser<T> extends EventEmitter {
     }
 
     return true;
+  }
+
+  private _parseBody(body: Buffer): Packet<T> | Ack {
+    let cryptoOptions = this.options.crypto;
+
+    if (cryptoOptions) {
+      let decipher = Crypto.createDecipher(cryptoOptions.algorithm, cryptoOptions.password);
+      body = Buffer.concat([decipher.update(body), decipher.final()]);
+    }
+
+    return bson.deserialize(body, {promoteBuffers: true}) as Packet<T> | Ack;
   }
 }
 
@@ -192,67 +176,52 @@ export interface Parser<T> {
 }
 
 export interface BuildOptions {
-  data?: any;
-  type?: Type;
+  crypto?: CryptoOptions;
 }
 
-export function build(id: number, {data, type}: BuildOptions): Buffer {
-  if (type === undefined) {
-    type = Buffer.isBuffer(data) ?
-      Type.raw : isPrimitive(data) ?
-      Type.json : Type.bson;
-  }
-
-  let body: Buffer;
+export function build(id: number, type: Type.ack, options?: BuildOptions): Buffer;
+export function build(id: number, type: Type.packet, data?: any, options?: BuildOptions): Buffer;
+export function build(
+  id: number,
+  type: Type,
+  data?: any,
+  options?: BuildOptions,
+): Buffer {
+  let object: Packet<any> | Ack;
 
   switch (type) {
     case Type.ack:
-      body = Buffer.from([]);
+      object = {
+        type,
+        id,
+      };
+      options = data;
       break;
-    case Type.raw:
-      body = data;
-      break;
-    case Type.json:
-      body = Buffer.from(JSON.stringify(data));
-      break;
-    case Type.bson:
-      body = bson.serialize(data);
+    case Type.packet:
+      object = {
+        type,
+        id,
+        data,
+      };
       break;
     default:
-      throw new Error(`Invalid packet type ${type}`);
+      throw new Error(`Invalid type ${type}`);
   }
 
-  let bodyCRC = crc32(body);
+  let body = bson.serialize(object);
+
+  let cryptoOptions = options && options.crypto;
+
+  if (cryptoOptions) {
+    let cipher = Crypto.createCipher(cryptoOptions.algorithm, cryptoOptions.password);
+    body = Buffer.concat([cipher.update(body), cipher.final()]);
+  }
 
   let head = new Buffer(HEAD_LENGTH);
 
   MAGIC.copy(head);
 
-  head.writeUInt8(VERSION, HeadOffset.version);
-  head.writeUInt8(type, HeadOffset.type);
-  head.writeUInt32BE(id, HeadOffset.id);
-  head.writeUInt32BE(bodyCRC, HeadOffset.bodyCRC);
   head.writeUInt32BE(body.length, HeadOffset.bodyLength);
 
-  let crc = crc16(head.slice(HeadOffset.version));
-
-  head.writeUInt16BE(crc, HeadOffset.crc);
-
   return Buffer.concat([head, body]);
-}
-
-export function buildAck(id: number): Buffer {
-  return build(id, {type: Type.ack});
-}
-
-function isPrimitive(value: any): boolean {
-  switch (typeof value) {
-    case 'string':
-    case 'number':
-    case 'boolean':
-    case 'undefined':
-      return true;
-  }
-
-  return value === null;
 }
