@@ -42,7 +42,7 @@ export class Jet<T> extends EventEmitter {
     this.timeout = timeout;
   }
 
-  async send(data: T): Promise<void> {
+  async send(data: T): Promise<number> {
     let id = ++this.lastId;
     let packetBuffer = build(id, Type.packet, data, {crypto: this.cryptoOptions});
 
@@ -57,25 +57,18 @@ export class Jet<T> extends EventEmitter {
       });
     });
 
-    let timer: NodeJS.Timer;
+    await new Promise<void>((resolve, reject) => {
+      let timer = setTimeout(() => {
+        reject(new Error('Jet sending timed out'));
+      }, this.timeout);
 
-    let sentPromise = new Promise<void>(resolve => {
       this.resolverMap.set(id, () => {
         clearTimeout(timer);
         resolve();
       });
     });
 
-    let timeoutPromise = new Promise<void>((_resolve, reject) => {
-      timer = setTimeout(() => {
-        reject(new Error('Jet sending timed out'));
-      }, this.timeout);
-    });
-
-    await Promise.race([
-      sentPromise,
-      timeoutPromise,
-    ]);
+    return id;
   }
 
   private handlePacket({id, data}: Packet<T>): void {
@@ -83,7 +76,10 @@ export class Jet<T> extends EventEmitter {
 
     this.socket.write(ackBuffer);
 
-    this.emit('data', data);
+    // Give ack higher priority.
+    setImmediate(() => {
+      this.emit('data', data, id);
+    });
   }
 
   private handleAck({id}: Ack): void {
@@ -96,9 +92,9 @@ export class Jet<T> extends EventEmitter {
 }
 
 export interface Jet<T> {
-  on(event: 'data', listener: (data: T) => void): this;
+  on(event: 'data', listener: (data: T, id: number) => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
 
-  emit(event: 'data', data: T): boolean;
+  emit(event: 'data', data: T, id: number): boolean;
   emit(event: 'error', error: Error): boolean;
 }
