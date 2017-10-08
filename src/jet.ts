@@ -31,6 +31,7 @@ export class Jet<T> extends EventEmitter {
     let parser = new Parser<T>({crypto: cryptoOptions});
 
     socket.on('data', data => parser.append(data));
+    socket.on('error', error => this.emit('error', error));
 
     parser.on('packet', packet => this.handlePacket(packet));
     parser.on('ack', ack => this.handleAck(ack));
