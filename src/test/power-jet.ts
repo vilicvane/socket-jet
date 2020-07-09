@@ -94,3 +94,27 @@ test.cb('should handle parallel calls', t => {
     });
   });
 });
+
+test.cb('should handle connection close', t => {
+  let server = Net.createServer(socket => {
+    let jet = new TestJet(socket);
+
+    jet.on('error', console.error);
+
+    setTimeout(() => {
+      socket.end();
+    }, 10);
+  });
+
+  server.listen(() => {
+    let port = server.address().port;
+    let socket = Net.connect({port}, () => {
+      let jet = new TestJet(socket);
+
+      jet.call('echo', 123, 100).catch(error => {
+        t.is(error.message, 'Call reset due to connection close');
+        t.end();
+      });
+    });
+  });
+});

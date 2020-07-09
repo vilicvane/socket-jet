@@ -75,7 +75,9 @@ export class Jet<T> extends EventEmitter {
   private handlePacket({id, data}: Packet<T>): void {
     let ackBuffer = build(id, Type.ack, {crypto: this.cryptoOptions});
 
-    this.socket.write(ackBuffer);
+    if (this.socket.writable) {
+      this.socket.write(ackBuffer);
+    }
 
     // Give ack higher priority.
     setImmediate(() => {

@@ -27,6 +27,7 @@ export interface CallThrow {
 export type CallResult = CallReturn | CallThrow;
 
 export class PowerJet extends Jet<Call | CallResult> {
+  private closed = false;
   private callHandlersMap = new Map<number, [CallHandler, CallHandler]>();
 
   constructor(socket: Socket, options?: JetOptions) {
@@ -38,6 +39,11 @@ export class PowerJet extends Jet<Call | CallResult> {
       } else {
         this.handleResult(data);
       }
+    });
+
+    socket.on('close', () => {
+      this.closed = true;
+      this.handleConnectionClose();
     });
   }
 
@@ -76,7 +82,9 @@ export class PowerJet extends Jet<Call | CallResult> {
         };
       }
 
-      await this.send(result);
+      if (!this.closed) {
+        await this.send(result);
+      }
     })()
       .catch(error => this.emit('error', error));
   }
@@ -97,6 +105,16 @@ export class PowerJet extends Jet<Call | CallResult> {
       case 'throw':
         handlers[1](new Error(result.value));
         break;
+    }
+  }
+
+  private handleConnectionClose(): void {
+    let handlersMap = new Map(this.callHandlersMap);
+
+    this.callHandlersMap.clear();
+
+    for (let handlers of handlersMap.values()) {
+      handlers[1](new Error('Call reset due to connection close'));
     }
   }
 }
