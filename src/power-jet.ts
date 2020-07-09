@@ -11,11 +11,15 @@ export interface Call {
 }
 
 export interface CallReturn {
+  /** Call ID. */
+  id: number;
   type: 'return';
   value: any;
 }
 
 export interface CallThrow {
+  /** Call ID. */
+  id: number;
   type: 'throw';
   value: string;
 }
@@ -30,9 +34,9 @@ export class PowerJet extends Jet<Call | CallResult> {
 
     this.on('data', (data, id) => {
       if (data.type === 'call') {
-        this.handleCall(data);
+        this.handleCall(data, id);
       } else {
-        this.handleResult(data, id);
+        this.handleResult(data);
       }
     });
   }
@@ -51,7 +55,7 @@ export class PowerJet extends Jet<Call | CallResult> {
     });
   }
 
-  private handleCall(call: Call): void {
+  private handleCall(call: Call, id: number): void {
     (async () => {
       let result: CallResult;
 
@@ -60,11 +64,13 @@ export class PowerJet extends Jet<Call | CallResult> {
         let value = await (this as any)[name](...args);
 
         result = {
+          id,
           type: 'return',
           value,
         };
       } catch (error) {
         result = {
+          id,
           type: 'throw',
           value: typeof error === 'string' ? error : `${error && error.message}`,
         };
@@ -75,14 +81,14 @@ export class PowerJet extends Jet<Call | CallResult> {
       .catch(error => this.emit('error', error));
   }
 
-  private handleResult(result: CallResult, id: number): void {
-    let handlers = this.callHandlersMap.get(id);
+  private handleResult(result: CallResult): void {
+    let handlers = this.callHandlersMap.get(result.id);
 
     if (!handlers) {
       return;
     }
 
-    this.callHandlersMap.delete(id);
+    this.callHandlersMap.delete(result.id);
 
     switch (result.type) {
       case 'return':

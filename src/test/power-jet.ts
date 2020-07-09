@@ -14,6 +14,12 @@ class TestJet extends PowerJet {
   protected async fail(message: string): Promise<void> {
     throw new Error(message);
   }
+
+  protected async echo(value: any, delay: number): Promise<any> {
+    return await new Promise<string>(resolve => {
+      setTimeout(resolve, delay, value);
+    });
+  }
 }
 
 test.cb('should handle successful call', t => {
@@ -60,6 +66,31 @@ test.cb('should handle failing call', t => {
             t.end();
           },
         );
+    });
+  });
+});
+
+test.cb('should handle parallel calls', t => {
+  let server = Net.createServer(socket => {
+    let jet = new TestJet(socket);
+    jet.on('error', t.ifError);
+  });
+
+  server.listen(() => {
+    let port = server.address().port;
+    let socket = Net.connect({port}, () => {
+      let jet = new TestJet(socket);
+
+      t.plan(2);
+
+      jet.call('echo', 123, 100).then(value => {
+        t.is(value, 123);
+        t.end();
+      }, t.ifError);
+
+      jet.call('echo', 456, 10).then(value => {
+        t.is(value, 456);
+      }, t.ifError);
     });
   });
 });
