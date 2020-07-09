@@ -103,7 +103,7 @@ test.cb('should handle connection close', t => {
 
     setTimeout(() => {
       socket.end();
-    }, 10);
+    }, 50);
   });
 
   server.listen(() => {
