@@ -1,6 +1,6 @@
-import { Socket } from 'net';
+import {Socket} from 'net';
 
-import { Jet, JetOptions } from './jet';
+import {Jet, JetOptions} from './jet';
 
 type CallHandler = (value: any) => void;
 
@@ -27,7 +27,6 @@ export interface CallThrow {
 export type CallResult = CallReturn | CallThrow;
 
 export class PowerJet extends Jet<Call | CallResult> {
-  private closed = false;
   private callHandlersMap = new Map<number, [CallHandler, CallHandler]>();
 
   constructor(socket: Socket, options?: JetOptions) {
@@ -41,10 +40,7 @@ export class PowerJet extends Jet<Call | CallResult> {
       }
     });
 
-    socket.on('close', () => {
-      this.closed = true;
-      this.handlePowerJetSocketClose();
-    });
+    socket.on('close', () => this.handlePowerJetSocketClose());
   }
 
   async call<T>(name: string, ...args: any[]): Promise<T> {
@@ -56,7 +52,7 @@ export class PowerJet extends Jet<Call | CallResult> {
 
     let id = await this.send(call);
 
-    return await new Promise<T>((resolve, reject) => {
+    return new Promise<T>((resolve, reject) => {
       this.callHandlersMap.set(id, [resolve, reject]);
     });
   }
@@ -81,15 +77,15 @@ export class PowerJet extends Jet<Call | CallResult> {
         result = {
           id,
           type: 'throw',
-          value: typeof error === 'string' ? error : `${error && error.message}`,
+          value:
+            typeof error === 'string' ? error : `${error && error.message}`,
         };
       }
 
-      if (!this.closed) {
+      if (this.socket.writable) {
         await this.send(result);
       }
-    })()
-      .catch(error => this.emit('error', error));
+    })().catch(error => this.emit('error', error));
   }
 
   /**

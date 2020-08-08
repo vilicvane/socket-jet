@@ -8,9 +8,3 @@ before_install:
 cache:
   directory:
     - $HOME/.yarn/bin
-install:
-  - yarn install
-script:
-  - yarn lint
-  - yarn build
-  - yarn test

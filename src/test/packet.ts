@@ -1,8 +1,6 @@
 import * as Crypto from 'crypto';
 
-import test from 'ava';
-
-import { CryptoOptions, Parser, Type, build } from '../packet';
+import {CryptoOptions, Parser, Type, build} from '../library/packet';
 
 let primitivePacket = {
   type: Type.packet,
@@ -39,101 +37,110 @@ let cryptoOptions: CryptoOptions = {
   iv: Crypto.randomBytes(16),
 };
 
-let primitivePacketBuffer = build(Type.packet, primitivePacket.id, primitivePacket.data);
+let primitivePacketBuffer = build(
+  Type.packet,
+  primitivePacket.id,
+  primitivePacket.data,
+);
 let objectPacketBuffer = build(Type.packet, objectPacket.id, objectPacket.data);
 let rawPacketBuffer = build(Type.packet, rawPacket.id, rawPacket.data);
-let encryptedPacketBuffer = build(Type.packet, packetToEncrypt.id, packetToEncrypt.data, {crypto: cryptoOptions});
+let encryptedPacketBuffer = build(
+  Type.packet,
+  packetToEncrypt.id,
+  packetToEncrypt.data,
+  {crypto: cryptoOptions},
+);
 let ackBuffer = build(Type.ack, ack.id);
 let encryptedAckBuffer = build(Type.ack, ack.id, {crypto: cryptoOptions});
 
-test.cb('should parse primitive packet', t => {
+test('should parse primitive packet', done => {
   let parser = new Parser<typeof primitivePacket.data>();
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, primitivePacket);
-    t.end();
+    expect(packet).toEqual(primitivePacket);
+    done();
   });
 
   parser.append(primitivePacketBuffer);
 });
 
-test.cb('should parse object packet', t => {
+test('should parse object packet', done => {
   let parser = new Parser<typeof objectPacket.data>();
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, objectPacket);
-    t.end();
+    expect(packet).toEqual(objectPacket);
+    done();
   });
 
   parser.append(objectPacketBuffer);
 });
 
-test.cb('should parse object packet segments', t => {
+test('should parse object packet segments', done => {
   let parser = new Parser<typeof objectPacket.data>();
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, objectPacket);
-    t.end();
+    expect(packet).toEqual(objectPacket);
+    done();
   });
 
   parser.append(objectPacketBuffer.slice(0, 2));
   parser.append(objectPacketBuffer.slice(2, 6));
   parser.append(objectPacketBuffer.slice(6));
 
-  t.is(parser.pending, 0);
+  expect(parser.pending).toBe(0);
 });
 
-test.cb('should parse object packet even in dirty state', t => {
+test('should parse object packet even in dirty state', done => {
   let parser = new Parser<typeof objectPacket.data>();
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, objectPacket);
-    t.end();
+    expect(packet).toEqual(objectPacket);
+    done();
   });
 
   parser.append(Buffer.from('hello, thank you!'));
   parser.append(objectPacketBuffer);
 });
 
-test.cb('should parse raw packet', t => {
+test('should parse raw packet', done => {
   let parser = new Parser<Buffer>();
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, rawPacket);
-    t.end();
+    expect(packet).toEqual(rawPacket);
+    done();
   });
 
   parser.append(rawPacketBuffer);
 });
 
-test.cb('should parse encrypted packet', t => {
+test('should parse encrypted packet', done => {
   let parser = new Parser<typeof objectPacket.data>({crypto: cryptoOptions});
 
   parser.on('packet', packet => {
-    t.deepEqual(packet, packetToEncrypt);
-    t.end();
+    expect(packet).toEqual(packetToEncrypt);
+    done();
   });
 
   parser.append(encryptedPacketBuffer);
 });
 
-test.cb('should parse ack', t => {
+test('should parse ack', done => {
   let parser = new Parser<any>();
 
   parser.on('ack', receivedAck => {
-    t.deepEqual(receivedAck, ack);
-    t.end();
+    expect(receivedAck).toEqual(ack);
+    done();
   });
 
   parser.append(ackBuffer);
 });
 
-test.cb('should parse encrypted ack', t => {
+test('should parse encrypted ack', done => {
   let parser = new Parser<any>({crypto: cryptoOptions});
 
   parser.on('ack', receivedAck => {
-    t.deepEqual(receivedAck, ack);
-    t.end();
+    expect(receivedAck).toEqual(ack);
+    done();
   });
 
   parser.append(encryptedAckBuffer);

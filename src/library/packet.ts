@@ -1,9 +1,7 @@
 import * as Crypto from 'crypto';
-import { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 
-import { BSON } from 'bson';
-
-const bson = new BSON();
+import * as BSON from 'bson';
 
 const HEAD_LENGTH = 8;
 const MAGIC = Buffer.from('jet!');
@@ -71,11 +69,9 @@ export class Parser<T> extends EventEmitter {
 
   private buffer = Buffer.from([]);
 
-  constructor(
-    private options: ParserOptions = {},
-  ) {
+  constructor(private options: ParserOptions = {}) {
     super();
- }
+  }
 
   get pending(): number {
     return this.buffer.length;
@@ -87,7 +83,7 @@ export class Parser<T> extends EventEmitter {
   }
 
   private parse(): void {
-    while (this._parse()) { }
+    while (this._parse()) {}
   }
 
   private _parse(): boolean {
@@ -176,11 +172,15 @@ export class Parser<T> extends EventEmitter {
     let cryptoOptions = this.options.crypto;
 
     if (cryptoOptions) {
-      let decipher = Crypto.createDecipheriv(cryptoOptions.algorithm, cryptoOptions.key, cryptoOptions.iv);
+      let decipher = Crypto.createDecipheriv(
+        cryptoOptions.algorithm,
+        cryptoOptions.key,
+        cryptoOptions.iv,
+      );
       body = Buffer.concat([decipher.update(body), decipher.final()]);
     }
 
-    return bson.deserialize(body, {promoteBuffers: true}) as GeneralPacket<T>;
+    return BSON.deserialize(body, {promoteBuffers: true}) as GeneralPacket<T>;
   }
 }
 
@@ -200,13 +200,22 @@ export interface BuildOptions {
   crypto?: CryptoOptions;
 }
 
-export function build(type: Type.ack, id: number, options?: BuildOptions): Buffer;
-export function build(type: Type.packet, id: number, data?: any, options?: BuildOptions): Buffer;
-export function build(type: Type.ping | Type.pong, options?: BuildOptions): Buffer;
 export function build(
-  type: Type,
-  ...args: any[]
-): Buffer {
+  type: Type.ack,
+  id: number,
+  options?: BuildOptions,
+): Buffer;
+export function build(
+  type: Type.packet,
+  id: number,
+  data?: any,
+  options?: BuildOptions,
+): Buffer;
+export function build(
+  type: Type.ping | Type.pong,
+  options?: BuildOptions,
+): Buffer;
+export function build(type: Type, ...args: any[]): Buffer {
   let object: GeneralPacket<any>;
   let options: BuildOptions;
 
@@ -237,12 +246,16 @@ export function build(
       throw new Error(`Invalid type ${type}`);
   }
 
-  let body = bson.serialize(object);
+  let body = BSON.serialize(object);
 
   let cryptoOptions = options && options.crypto;
 
   if (cryptoOptions) {
-    let cipher = Crypto.createCipheriv(cryptoOptions.algorithm, cryptoOptions.key, cryptoOptions.iv);
+    let cipher = Crypto.createCipheriv(
+      cryptoOptions.algorithm,
+      cryptoOptions.key,
+      cryptoOptions.iv,
+    );
     body = Buffer.concat([cipher.update(body), cipher.final()]);
   }
 

@@ -1,13 +1,11 @@
 import * as Net from 'net';
 
-import test from 'ava';
-
-import { Parser, Type } from '../packet';
-import { PowerJet } from '../power-jet';
+import {Parser, Type} from '../library/packet';
+import {PowerJet} from '../library/power-jet';
 
 class TestJet extends PowerJet {
   protected async test(str: string, index: number): Promise<string> {
-    return await new Promise<string>(resolve => {
+    return new Promise<string>(resolve => {
       setTimeout(resolve, 100, str.substr(index));
     });
   }
@@ -17,86 +15,73 @@ class TestJet extends PowerJet {
   }
 
   protected async echo(value: any, delay: number): Promise<any> {
-    return await new Promise<string>(resolve => {
+    return new Promise<string>(resolve => {
       setTimeout(resolve, delay, value);
     });
   }
 }
 
-test.cb('should handle successful call', t => {
+test('should handle successful call', done => {
   let server = Net.createServer(socket => {
     let jet = new TestJet(socket);
-    jet.on('error', t.ifError);
+    jet.on('error', done);
   });
 
   server.listen(() => {
-    let port = server.address().port;
+    let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
       let jet = new TestJet(socket);
 
-      jet
-        .call<string>('test', 'foobar', 3)
-        .then(
-          value => {
-            t.is(value, 'bar');
-            t.end();
-          },
-          t.ifError,
-        );
+      jet.call<string>('test', 'foobar', 3).then(value => {
+        expect(value).toBe('bar');
+        done();
+      }, done);
     });
   });
 });
 
-test.cb('should handle failing call', t => {
+test('should handle failing call', done => {
   let server = Net.createServer(socket => {
     let jet = new TestJet(socket);
-    jet.on('error', t.ifError);
+    jet.on('error', done);
   });
 
   server.listen(() => {
-    let port = server.address().port;
+    let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
       let jet = new TestJet(socket);
 
-      jet
-        .call<void>('fail', 'error message')
-        .then(
-          () => t.fail(),
-          (error: Error) => {
-            t.is(error.message, 'error message');
-            t.end();
-          },
-        );
+      jet.call<void>('fail', 'error message').then(
+        () => done('Expecting error'),
+        (error: Error) => {
+          expect(error.message).toBe('error message');
+          done();
+        },
+      );
     });
   });
 });
 
-test.cb('should handle parallel calls', t => {
+test('should handle parallel calls', done => {
   let server = Net.createServer(socket => {
     let jet = new TestJet(socket);
-    jet.on('error', t.ifError);
+    jet.on('error', done);
   });
 
   server.listen(() => {
-    let port = server.address().port;
+    let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
       let jet = new TestJet(socket);
 
-      t.plan(2);
-
-      jet.call('echo', 123, 100).then(value => {
-        t.is(value, 123);
-        t.end();
-      }, t.ifError);
-
-      jet.call('echo', 456, 10).then(value => {
-        t.is(value, 456);
-      }, t.ifError);
+      Promise.all([
+        expect(jet.call('echo', 123, 100)).resolves.toBe(123),
+        expect(jet.call('echo', 456, 10)).resolves.toBe(456),
+      ]).then(() => done(), done);
     });
   });
 });
 
-test.cb('should handle socket close after receiving ack', t => {
+test('should handle socket close after receiving ack', done => {
   let server = Net.createServer(socket => {
     let jet = new TestJet(socket);
 
@@ -108,23 +93,23 @@ test.cb('should handle socket close after receiving ack', t => {
   });
 
   server.listen(() => {
-    let port = server.address().port;
+    let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
       let jet = new TestJet(socket);
 
       jet.call('echo', 123, 100).catch(error => {
-        t.is(error.message, 'Call reset due to socket close');
-        t.end();
+        expect(error.message).toBe('Call reset due to socket close');
+        done();
       });
     });
   });
 });
 
-test.cb('should handle socket close before receiving ack', t => {
+test('should handle socket close before receiving ack', done => {
   let server = Net.createServer(socket => {
     let jet = new TestJet(socket);
 
-    ((jet as any as {parser: Parser<any>}).parser).on('packet', packet => {
+    ((jet as any) as {parser: Parser<any>}).parser.on('packet', packet => {
       if (packet.type === Type.packet && packet.data.type === 'call') {
         socket.end();
       }
@@ -134,13 +119,13 @@ test.cb('should handle socket close before receiving ack', t => {
   });
 
   server.listen(() => {
-    let port = server.address().port;
+    let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
       let jet = new TestJet(socket);
 
       jet.call('echo', 123, 100).catch(error => {
-        t.is(error.message, 'Call reset due to socket close');
-        t.end();
+        expect(error.message).toBe('Call reset due to socket close');
+        done();
       });
     });
   });

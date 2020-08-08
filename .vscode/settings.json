@@ -1,4 +1,24 @@
 {
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "editor.rulers": [80],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
   "typescript.tsdk": "node_modules/typescript/lib",
-  "editor.formatOnSave": true
+  "eslint.enable": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "handlebars"
+  ],
+  "eslint.workingDirectories": [{"mode": "auto"}],
+  "cSpell.words": ["BSON"]
 }

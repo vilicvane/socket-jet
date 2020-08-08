@@ -1,44 +1,37 @@
 import * as Crypto from 'crypto';
 import * as Net from 'net';
 
-import test from 'ava';
-
-import { Jet } from '../jet';
-import { CryptoOptions } from '../packet';
+import {Jet} from '../library/jet';
+import {CryptoOptions} from '../library/packet';
 
 let testData = {test: 123};
 
-test.cb('should send and receive packet', t => {
+test('should send and receive packet', done => {
   let received = false;
 
   let server = Net.createServer(socket => {
     let jet = new Jet<any>(socket);
 
     jet.on('data', data => {
-      t.deepEqual(data, testData);
+      expect(data).toEqual(testData);
       received = true;
     });
   });
 
   server.listen(() => {
-    let port = server.address().port;
+    let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
       let jet = new Jet<any>(socket);
 
-      jet
-        .send(testData)
-        .then(
-          () => {
-            t.true(received);
-            t.end();
-          },
-          t.fail,
-        );
+      jet.send(testData).then(() => {
+        expect(received).toBe(true);
+        done();
+      }, done);
     });
   });
 });
 
-test.cb('should send and receive encrypted packet', t => {
+test('should send and receive encrypted packet', done => {
   let cryptoOptions: CryptoOptions = {
     algorithm: 'aes-256-cfb',
     key: Crypto.randomBytes(32),
@@ -51,25 +44,20 @@ test.cb('should send and receive encrypted packet', t => {
     let jet = new Jet<any>(socket, {crypto: cryptoOptions});
 
     jet.on('data', data => {
-      t.deepEqual(data, testData);
+      expect(data).toEqual(testData);
       received = true;
     });
   });
 
   server.listen(() => {
-    let port = server.address().port;
+    let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
       let jet = new Jet<any>(socket, {crypto: cryptoOptions});
 
-      jet
-        .send(testData)
-        .then(
-          () => {
-            t.true(received);
-            t.end();
-          },
-          t.fail,
-        );
+      jet.send(testData).then(() => {
+        expect(received).toBe(true);
+        done();
+      }, done);
     });
   });
 });

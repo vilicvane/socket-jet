@@ -1,7 +1,7 @@
-import { EventEmitter } from 'events';
-import { Socket } from 'net';
+import {EventEmitter} from 'events';
+import {Socket} from 'net';
 
-import { Ack, CryptoOptions, Packet, Parser, Type, build } from './packet';
+import {Ack, CryptoOptions, Packet, Parser, Type, build} from './packet';
 
 export const DEFAULT_KEEP_ALIVE_INTERVAL = 5 * 1000;
 export const DEFAULT_KEEP_ALIVE_COUNT = 2;
@@ -18,7 +18,10 @@ export class Jet<T> extends EventEmitter {
   private parser: Parser<T>;
 
   private lastId = 0;
-  private sendHandlersMap = new Map<number, [() => void, (error: Error) => void]>();
+  private sendHandlersMap = new Map<
+    number,
+    [() => void, (error: Error) => void]
+  >();
 
   private cryptoOptions: CryptoOptions | undefined;
 
@@ -28,10 +31,7 @@ export class Jet<T> extends EventEmitter {
     public socket: Socket,
     {
       crypto: cryptoOptions,
-      keepAlive: {
-        interval: keepAliveInterval,
-        count: keepAliveCount,
-      } = {},
+      keepAlive: {interval: keepAliveInterval, count: keepAliveCount} = {},
     }: JetOptions = {},
   ) {
     super();
@@ -58,7 +58,9 @@ export class Jet<T> extends EventEmitter {
 
   async send(data: T): Promise<number> {
     let id = ++this.lastId;
-    let packetBuffer = build(Type.packet, id, data, {crypto: this.cryptoOptions});
+    let packetBuffer = build(Type.packet, id, data, {
+      crypto: this.cryptoOptions,
+    });
 
     await new Promise<void>((resolve, reject) => {
       this.socket.write(packetBuffer, (error: any) => {
@@ -78,7 +80,10 @@ export class Jet<T> extends EventEmitter {
     return id;
   }
 
-  private keepAlive(interval = DEFAULT_KEEP_ALIVE_INTERVAL, count = DEFAULT_KEEP_ALIVE_COUNT) {
+  private keepAlive(
+    interval = DEFAULT_KEEP_ALIVE_INTERVAL,
+    count = DEFAULT_KEEP_ALIVE_COUNT,
+  ): void {
     let remainingCount = count;
 
     this.parser.on('pong', () => {
