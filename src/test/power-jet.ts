@@ -2,6 +2,7 @@ import * as Net from 'net';
 
 import test from 'ava';
 
+import { Parser, Type } from '../packet';
 import { PowerJet } from '../power-jet';
 
 class TestJet extends PowerJet {
@@ -95,7 +96,7 @@ test.cb('should handle parallel calls', t => {
   });
 });
 
-test.cb('should handle connection close', t => {
+test.cb('should handle socket close after receiving ack', t => {
   let server = Net.createServer(socket => {
     let jet = new TestJet(socket);
 
@@ -112,7 +113,33 @@ test.cb('should handle connection close', t => {
       let jet = new TestJet(socket);
 
       jet.call('echo', 123, 100).catch(error => {
-        t.is(error.message, 'Call reset due to connection close');
+        t.is(error.message, 'Call reset due to socket close');
+        t.end();
+      });
+    });
+  });
+});
+
+test.cb('should handle socket close before receiving ack', t => {
+  let server = Net.createServer(socket => {
+    let jet = new TestJet(socket);
+
+    ((jet as any as {parser: Parser<any>}).parser).on('packet', packet => {
+      if (packet.type === Type.packet && packet.data.type === 'call') {
+        socket.end();
+      }
+    });
+
+    jet.on('error', console.error);
+  });
+
+  server.listen(() => {
+    let port = server.address().port;
+    let socket = Net.connect({port}, () => {
+      let jet = new TestJet(socket);
+
+      jet.call('echo', 123, 100).catch(error => {
+        t.is(error.message, 'Call reset due to socket close');
         t.end();
       });
     });

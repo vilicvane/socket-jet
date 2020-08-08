@@ -29,6 +29,15 @@ interface Head {
 export const enum Type {
   ack = 0,
   packet = 1,
+  ping = 3,
+  pong = 4,
+}
+
+export type GeneralPacket<T> = Ack | Packet<T> | Ping | Pong;
+
+export interface Ack {
+  type: Type.ack;
+  id: number;
 }
 
 export interface Packet<T> {
@@ -37,14 +46,18 @@ export interface Packet<T> {
   data: T;
 }
 
-export interface Ack {
-  type: Type.ack;
-  id: number;
+export interface Ping {
+  type: Type.ping;
+}
+
+export interface Pong {
+  type: Type.pong;
 }
 
 export interface CryptoOptions {
   algorithm: string;
-  password: string | Buffer;
+  key: string | Buffer;
+  iv: any;
 }
 
 export interface ParserOptions {
@@ -145,6 +158,12 @@ export class Parser<T> extends EventEmitter {
         case Type.packet:
           this.emit('packet', object);
           break;
+        case Type.ping:
+          this.emit('ping');
+          break;
+        case Type.pong:
+          this.emit('pong');
+          break;
       }
     } catch (error) {
       this.emit('error', error);
@@ -153,25 +172,27 @@ export class Parser<T> extends EventEmitter {
     return true;
   }
 
-  private _parseBody(body: Buffer): Packet<T> | Ack {
+  private _parseBody(body: Buffer): GeneralPacket<T> {
     let cryptoOptions = this.options.crypto;
 
     if (cryptoOptions) {
-      let decipher = Crypto.createDecipher(cryptoOptions.algorithm, cryptoOptions.password);
+      let decipher = Crypto.createDecipheriv(cryptoOptions.algorithm, cryptoOptions.key, cryptoOptions.iv);
       body = Buffer.concat([decipher.update(body), decipher.final()]);
     }
 
-    return bson.deserialize(body, {promoteBuffers: true}) as Packet<T> | Ack;
+    return bson.deserialize(body, {promoteBuffers: true}) as GeneralPacket<T>;
   }
 }
 
 export interface Parser<T> {
-  on(event: 'packet', listener: (packet: Packet<T>) => void): this;
   on(event: 'ack', listener: (ack: Ack) => void): this;
+  on(event: 'packet', listener: (packet: Packet<T>) => void): this;
+  on(event: 'ping' | 'pong', listener: () => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
 
-  emit(event: 'packet', packet: Packet<T>): boolean;
   emit(event: 'ack', ack: Ack): boolean;
+  emit(event: 'packet', packet: Packet<T>): boolean;
+  emit(event: 'ping' | 'pong'): boolean;
   emit(event: 'error', error: Error): boolean;
 }
 
@@ -179,30 +200,38 @@ export interface BuildOptions {
   crypto?: CryptoOptions;
 }
 
-export function build(id: number, type: Type.ack, options?: BuildOptions): Buffer;
-export function build(id: number, type: Type.packet, data?: any, options?: BuildOptions): Buffer;
+export function build(type: Type.ack, id: number, options?: BuildOptions): Buffer;
+export function build(type: Type.packet, id: number, data?: any, options?: BuildOptions): Buffer;
+export function build(type: Type.ping | Type.pong, options?: BuildOptions): Buffer;
 export function build(
-  id: number,
   type: Type,
-  data?: any,
-  options?: BuildOptions,
+  ...args: any[]
 ): Buffer {
-  let object: Packet<any> | Ack;
+  let object: GeneralPacket<any>;
+  let options: BuildOptions;
 
   switch (type) {
     case Type.ack:
       object = {
         type,
-        id,
+        id: args[0],
       };
-      options = data;
+      options = args[1];
       break;
     case Type.packet:
       object = {
         type,
-        id,
-        data,
+        id: args[0],
+        data: args[1],
       };
+      options = args[2];
+      break;
+    case Type.ping:
+    case Type.pong:
+      object = {
+        type,
+      };
+      options = args[0];
       break;
     default:
       throw new Error(`Invalid type ${type}`);
@@ -213,11 +242,11 @@ export function build(
   let cryptoOptions = options && options.crypto;
 
   if (cryptoOptions) {
-    let cipher = Crypto.createCipher(cryptoOptions.algorithm, cryptoOptions.password);
+    let cipher = Crypto.createCipheriv(cryptoOptions.algorithm, cryptoOptions.key, cryptoOptions.iv);
     body = Buffer.concat([cipher.update(body), cipher.final()]);
   }
 
-  let head = new Buffer(HEAD_LENGTH);
+  let head = Buffer.alloc(HEAD_LENGTH);
 
   MAGIC.copy(head);
 

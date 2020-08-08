@@ -1,3 +1,5 @@
+import * as Crypto from 'crypto';
+
 import test from 'ava';
 
 import { CryptoOptions, Parser, Type, build } from '../packet';
@@ -33,15 +35,16 @@ let ack = {
 
 let cryptoOptions: CryptoOptions = {
   algorithm: 'aes-256-cfb',
-  password: 'some password',
+  key: Crypto.randomBytes(32),
+  iv: Crypto.randomBytes(16),
 };
 
-let primitivePacketBuffer = build(primitivePacket.id, Type.packet, primitivePacket.data);
-let objectPacketBuffer = build(objectPacket.id, Type.packet, objectPacket.data);
-let rawPacketBuffer = build(rawPacket.id, Type.packet, rawPacket.data);
-let encryptedPacketBuffer = build(packetToEncrypt.id, Type.packet, packetToEncrypt.data, {crypto: cryptoOptions});
-let ackBuffer = build(ack.id, Type.ack);
-let encryptedAckBuffer = build(ack.id, Type.ack, {crypto: cryptoOptions});
+let primitivePacketBuffer = build(Type.packet, primitivePacket.id, primitivePacket.data);
+let objectPacketBuffer = build(Type.packet, objectPacket.id, objectPacket.data);
+let rawPacketBuffer = build(Type.packet, rawPacket.id, rawPacket.data);
+let encryptedPacketBuffer = build(Type.packet, packetToEncrypt.id, packetToEncrypt.data, {crypto: cryptoOptions});
+let ackBuffer = build(Type.ack, ack.id);
+let encryptedAckBuffer = build(Type.ack, ack.id, {crypto: cryptoOptions});
 
 test.cb('should parse primitive packet', t => {
   let parser = new Parser<typeof primitivePacket.data>();

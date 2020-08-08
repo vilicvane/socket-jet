@@ -1,3 +1,4 @@
+import * as Crypto from 'crypto';
 import * as Net from 'net';
 
 import test from 'ava';
@@ -40,7 +41,8 @@ test.cb('should send and receive packet', t => {
 test.cb('should send and receive encrypted packet', t => {
   let cryptoOptions: CryptoOptions = {
     algorithm: 'aes-256-cfb',
-    password: 'some password',
+    key: Crypto.randomBytes(32),
+    iv: Crypto.randomBytes(16),
   };
 
   let received = false;

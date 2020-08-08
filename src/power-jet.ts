@@ -43,7 +43,7 @@ export class PowerJet extends Jet<Call | CallResult> {
 
     socket.on('close', () => {
       this.closed = true;
-      this.handleConnectionClose();
+      this.handlePowerJetSocketClose();
     });
   }
 
@@ -61,6 +61,9 @@ export class PowerJet extends Jet<Call | CallResult> {
     });
   }
 
+  /**
+   * Handle call from peer.
+   */
   private handleCall(call: Call, id: number): void {
     (async () => {
       let result: CallResult;
@@ -89,6 +92,9 @@ export class PowerJet extends Jet<Call | CallResult> {
       .catch(error => this.emit('error', error));
   }
 
+  /**
+   * Handle result from peer to call from this power jet.
+   */
   private handleResult(result: CallResult): void {
     let handlers = this.callHandlersMap.get(result.id);
 
@@ -108,13 +114,13 @@ export class PowerJet extends Jet<Call | CallResult> {
     }
   }
 
-  private handleConnectionClose(): void {
+  private handlePowerJetSocketClose(): void {
     let handlersMap = new Map(this.callHandlersMap);
 
     this.callHandlersMap.clear();
 
     for (let handlers of handlersMap.values()) {
-      handlers[1](new Error('Call reset due to connection close'));
+      handlers[1](new Error('Call reset due to socket close'));
     }
   }
 }
