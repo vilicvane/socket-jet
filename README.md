@@ -35,12 +35,10 @@ let server = Net.createServer(socket => {
     console.log(data); // {thank: 'you'} from client.
   });
 
-  jet
-    .send('hello')
-    .then(
-      () => console.log('"hello" sent'),
-      error => console.error(error),
-    );
+  jet.send('hello').then(
+    () => console.log('"hello" sent'),
+    error => console.error(error),
+  );
 });
 
 server.listen(10047);
@@ -56,12 +54,10 @@ let socket = Net.connect(10047, () => {
     console.log(data); // 'hello' from server.
   });
 
-  jet
-    .send({thank: 'you'})
-    .then(
-      () => console.log('data sent'),
-      error => console.error(error),
-    );
+  jet.send({thank: 'you'}).then(
+    () => console.log('data sent'),
+    error => console.error(error),
+  );
 });
 ```
 
@@ -92,9 +88,7 @@ let socket = Net.connect(10047, () => {
   // Note: Client can also have derived `PowerJet` with methods to be called by server.
   let jet = new PowerJet(socket);
 
-  jet
-    .call('test', 1000)
-    .then(console.log); // 'hello, jet!' after 1000ms.
+  jet.call('test', 1000).then(console.log); // 'hello, jet!' after 1000ms.
 });
 ```
 
@@ -115,12 +109,10 @@ let server = Net.createServer(socket => {
     console.log(data); // {thank: 'you'} from client.
   });
 
-  jet
-    .send('hello')
-    .then(
-      () => console.log('"hello" sent'),
-      error => console.error(error),
-    );
+  jet.send('hello').then(
+    () => console.log('"hello" sent'),
+    error => console.error(error),
+  );
 });
 
 server.listen(10047);
@@ -141,12 +133,10 @@ let socket = Net.connect(10047, () => {
     console.log(data); // 'hello' from server.
   });
 
-  jet
-    .send({thank: 'you'})
-    .then(
-      () => console.log('data sent'),
-      error => console.error(error),
-    );
+  jet.send({thank: 'you'}).then(
+    () => console.log('data sent'),
+    error => console.error(error),
+  );
 });
 ```
 
