@@ -1,6 +1,6 @@
 {
   "name": "socket-jet",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Minimalist package for data packets over socket connections.",
   "main": "bld/library/index.js",
   "types": "bld/library/index.d.ts",
