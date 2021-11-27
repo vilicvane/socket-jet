@@ -29,11 +29,10 @@ export class Jet<TIn, TOut, TSocket extends Duplex> extends EventEmitter {
 
   private keepAliveTimer: NodeJS.Timer | undefined;
 
-  constructor(
-    readonly socket: TSocket,
-    {crypto: cryptoOptions, keepAlive = {}}: JetOptions = {},
-  ) {
+  constructor(readonly socket: TSocket, readonly options: JetOptions = {}) {
     super();
+
+    let {crypto: cryptoOptions, keepAlive = {}} = options;
 
     let parser = new Parser<TIn>({crypto: cryptoOptions});
 
