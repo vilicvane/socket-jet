@@ -8,10 +8,12 @@ export const DEFAULT_KEEP_ALIVE_COUNT = 2;
 
 export interface JetOptions {
   crypto?: CryptoOptions;
-  keepAlive?: {
-    interval?: number;
-    count?: number;
-  };
+  keepAlive?:
+    | {
+        interval?: number;
+        count?: number;
+      }
+    | false;
 }
 
 export class Jet<TIn, TOut, TSocket extends Duplex> extends EventEmitter {
@@ -29,10 +31,7 @@ export class Jet<TIn, TOut, TSocket extends Duplex> extends EventEmitter {
 
   constructor(
     readonly socket: TSocket,
-    {
-      crypto: cryptoOptions,
-      keepAlive: {interval: keepAliveInterval, count: keepAliveCount} = {},
-    }: JetOptions = {},
+    {crypto: cryptoOptions, keepAlive = {}}: JetOptions = {},
   ) {
     super();
 
@@ -51,8 +50,11 @@ export class Jet<TIn, TOut, TSocket extends Duplex> extends EventEmitter {
 
     this.cryptoOptions = cryptoOptions;
 
-    if (!socket.destroyed) {
-      this.keepAlive(keepAliveInterval, keepAliveCount);
+    if (!socket.destroyed && keepAlive) {
+      this.keepAlive(
+        keepAlive.interval ?? DEFAULT_KEEP_ALIVE_INTERVAL,
+        keepAlive.count ?? DEFAULT_KEEP_ALIVE_COUNT,
+      );
     }
   }
 
