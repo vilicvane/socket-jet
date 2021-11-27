@@ -7,13 +7,6 @@
   "repository": "https://github.com/vilic/socket-jet.git",
   "author": "vilicvane",
   "license": "MIT",
-  "files": [
-    "src",
-    "bld",
-    "!src/test",
-    "!bld/test",
-    "!*.tsbuildinfo"
-  ],
   "scripts": {
     "build": "rimraf bld && tsc --build tsconfig.json",
     "lint": "run-in-every eslint-project --echo --parallel -- eslint --config {configFileName} .",
