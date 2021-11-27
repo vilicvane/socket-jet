@@ -3,7 +3,7 @@ import * as Net from 'net';
 import {Parser, Type} from '../library/packet';
 import {PowerJet} from '../library/power-jet';
 
-class TestJet extends PowerJet {
+class TestJet extends PowerJet<Net.Socket> {
   protected async test(str: string, index: number): Promise<string> {
     return new Promise<string>(resolve => {
       setTimeout(resolve, 100, str.substr(index));

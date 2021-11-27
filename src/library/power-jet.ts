@@ -1,4 +1,4 @@
-import {Socket} from 'net';
+import {Duplex} from 'stream';
 
 import {Jet, JetOptions} from './jet';
 
@@ -26,10 +26,14 @@ export interface CallThrow {
 
 export type CallResult = CallReturn | CallThrow;
 
-export class PowerJet extends Jet<Call | CallResult> {
+export class PowerJet<TSocket extends Duplex> extends Jet<
+  Call | CallResult,
+  Call | CallResult,
+  TSocket
+> {
   private callHandlersMap = new Map<number, [CallHandler, CallHandler]>();
 
-  constructor(socket: Socket, options?: JetOptions) {
+  constructor(socket: TSocket, options?: JetOptions) {
     super(socket, options);
 
     this.on('data', (data, id) => {

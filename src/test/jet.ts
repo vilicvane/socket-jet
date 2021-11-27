@@ -10,7 +10,7 @@ test('should send and receive packet', done => {
   let received = false;
 
   let server = Net.createServer(socket => {
-    let jet = new Jet<any>(socket);
+    let jet = new Jet<typeof testData, never, Net.Socket>(socket);
 
     jet.on('data', data => {
       expect(data).toEqual(testData);
@@ -21,7 +21,7 @@ test('should send and receive packet', done => {
   server.listen(() => {
     let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
-      let jet = new Jet<any>(socket);
+      let jet = new Jet<never, typeof testData, Net.Socket>(socket);
 
       jet.send(testData).then(() => {
         expect(received).toBe(true);
@@ -41,7 +41,9 @@ test('should send and receive encrypted packet', done => {
   let received = false;
 
   let server = Net.createServer(socket => {
-    let jet = new Jet<any>(socket, {crypto: cryptoOptions});
+    let jet = new Jet<typeof testData, never, Net.Socket>(socket, {
+      crypto: cryptoOptions,
+    });
 
     jet.on('data', data => {
       expect(data).toEqual(testData);
@@ -52,7 +54,9 @@ test('should send and receive encrypted packet', done => {
   server.listen(() => {
     let port = (server.address() as Net.AddressInfo).port;
     let socket = Net.connect({port}, () => {
-      let jet = new Jet<any>(socket, {crypto: cryptoOptions});
+      let jet = new Jet<never, typeof testData, Net.Socket>(socket, {
+        crypto: cryptoOptions,
+      });
 
       jet.send(testData).then(() => {
         expect(received).toBe(true);

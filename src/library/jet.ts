@@ -14,8 +14,8 @@ export interface JetOptions {
   };
 }
 
-export class Jet<T> extends EventEmitter {
-  private parser: Parser<T>;
+export class Jet<TIn, TOut, TSocket extends Duplex> extends EventEmitter {
+  private parser: Parser<TIn>;
 
   private lastId = 0;
   private sendHandlersMap = new Map<
@@ -28,7 +28,7 @@ export class Jet<T> extends EventEmitter {
   private keepAliveTimer: NodeJS.Timer | undefined;
 
   constructor(
-    readonly socket: Duplex,
+    readonly socket: TSocket,
     {
       crypto: cryptoOptions,
       keepAlive: {interval: keepAliveInterval, count: keepAliveCount} = {},
@@ -36,7 +36,7 @@ export class Jet<T> extends EventEmitter {
   ) {
     super();
 
-    let parser = new Parser<T>({crypto: cryptoOptions});
+    let parser = new Parser<TIn>({crypto: cryptoOptions});
 
     socket.on('data', this.onSocketData);
     socket.on('close', this.onSocketClose);
@@ -56,7 +56,7 @@ export class Jet<T> extends EventEmitter {
     }
   }
 
-  async send(data: T): Promise<number> {
+  async send(data: TOut): Promise<number> {
     let id = ++this.lastId;
     let packetBuffer = build(Type.packet, id, data, {
       crypto: this.cryptoOptions,
@@ -108,7 +108,7 @@ export class Jet<T> extends EventEmitter {
     }
   };
 
-  private onParserPacket = ({id, data}: Packet<T>): void => {
+  private onParserPacket = ({id, data}: Packet<TIn>): void => {
     let ackBuffer = build(Type.ack, id, {crypto: this.cryptoOptions});
 
     if (this.socket.writable) {
@@ -169,10 +169,10 @@ export class Jet<T> extends EventEmitter {
   }
 }
 
-export interface Jet<T> {
-  on(event: 'data', listener: (data: T, id: number) => void): this;
+export interface Jet<TIn, TOut, TSocket extends Duplex> {
+  on(event: 'data', listener: (data: TIn, id: number) => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
 
-  emit(event: 'data', data: T, id: number): boolean;
+  emit(event: 'data', data: TIn, id: number): boolean;
   emit(event: 'error', error: Error): boolean;
 }
