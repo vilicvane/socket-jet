@@ -184,6 +184,9 @@ export interface Jet<TIn, TOut, TSocket extends Duplex> {
   on(event: 'data', listener: (data: TIn, id: number) => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
 
+  once(event: 'data', listener: (data: TIn, id: number) => void): this;
+  once(event: 'error', listener: (error: Error) => void): this;
+
   emit(event: 'data', data: TIn, id: number): boolean;
   emit(event: 'error', error: Error): boolean;
 }
