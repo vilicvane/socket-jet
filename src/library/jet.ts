@@ -80,6 +80,14 @@ export class Jet<TIn, TOut, TSocket extends Duplex> extends EventEmitter {
     return id;
   }
 
+  sendOneWay(data: TOut): void {
+    let packetBuffer = build(Type.packet, 0, data, {
+      crypto: this.cryptoOptions,
+    });
+
+    this.socket.write(packetBuffer);
+  }
+
   release(): Buffer {
     let socket = this.socket;
 
@@ -109,13 +117,16 @@ export class Jet<TIn, TOut, TSocket extends Duplex> extends EventEmitter {
   };
 
   private onParserPacket = ({id, data}: Packet<TIn>): void => {
-    let ackBuffer = build(Type.ack, id, {crypto: this.cryptoOptions});
+    if (id > 0) {
+      let ackBuffer = build(Type.ack, id, {crypto: this.cryptoOptions});
 
-    if (this.socket.writable) {
-      this.socket.write(ackBuffer);
+      if (this.socket.writable) {
+        this.socket.write(ackBuffer);
+      }
     }
 
-    // Give ack higher priority. (Why?)
+    // Give ack higher priority. If an ack and data is received within the same
+    // buffer, this can make sure data event emits after send() resolves.
     setImmediate(() => {
       this.emit('data', data, id);
     });
