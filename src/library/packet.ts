@@ -77,6 +77,10 @@ export class Parser<T> extends EventEmitter {
     return this.buffer.length;
   }
 
+  get pendingBuffer(): Buffer {
+    return this.buffer.slice();
+  }
+
   append(segment: Buffer): void {
     this.buffer = Buffer.concat([this.buffer, segment]);
     this.parse();

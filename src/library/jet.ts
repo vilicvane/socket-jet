@@ -80,12 +80,14 @@ export class Jet<T> extends EventEmitter {
     return id;
   }
 
-  release(): void {
+  release(): Buffer {
     let socket = this.socket;
 
     socket.on('data', this.onSocketData);
     socket.on('close', this.onSocketClose);
     socket.on('error', this.onError);
+
+    return this.parser.pendingBuffer;
   }
 
   private onSocketData = (data: Buffer): void => {
