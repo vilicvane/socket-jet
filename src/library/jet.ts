@@ -92,9 +92,9 @@ export class Jet<TIn, TOut, TSocket extends Duplex> extends EventEmitter {
   release(): Buffer {
     let socket = this.socket;
 
-    socket.on('data', this.onSocketData);
-    socket.on('close', this.onSocketClose);
-    socket.on('error', this.onError);
+    socket.off('data', this.onSocketData);
+    socket.off('close', this.onSocketClose);
+    socket.off('error', this.onError);
 
     return this.parser.pendingBuffer;
   }
