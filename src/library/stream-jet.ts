@@ -33,8 +33,6 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
 
     let {crypto: cryptoOptions, heartbeat} = options;
 
-    socket.on('pause', this.onSocketPause);
-    socket.on('resume', this.onSocketResume);
     socket.on('close', this.onSocketClose);
     socket.on('error', this.onError);
 
@@ -50,7 +48,10 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
     if (heartbeat) {
       let {interval = HEARTBEAT_INTERVAL_DEFAULT} =
         heartbeat === true ? {} : heartbeat;
+
       this.heartbeatInterval = interval;
+
+      this.setUpHeartbeat();
     }
   }
 
@@ -75,14 +76,6 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
       this.socket.on('data', this.onSocketData);
     }
   }
-
-  private onSocketPause = (): void => {
-    this.tearDownHeartbeat();
-  };
-
-  private onSocketResume = (): void => {
-    this.setUpHeartbeat();
-  };
 
   private onSocketClose = (): void => {
     this.tearDownHeartbeat();
