@@ -29,9 +29,10 @@ export const enum Type {
   packet = 1,
   ping = 3,
   pong = 4,
+  heartbeat = 5,
 }
 
-export type GeneralPacket<T> = Ack | Packet<T> | Ping | Pong;
+export type GeneralPacket<T> = Ack | Packet<T> | Ping | Pong | Heartbeat;
 
 export interface Ack {
   type: Type.ack;
@@ -50,6 +51,10 @@ export interface Ping {
 
 export interface Pong {
   type: Type.pong;
+}
+
+export interface Heartbeat {
+  type: Type.heartbeat;
 }
 
 export interface CryptoOptions {
@@ -164,6 +169,9 @@ export class Parser<T> extends EventEmitter {
         case Type.pong:
           this.emit('pong');
           break;
+        case Type.heartbeat:
+          this.emit('heartbeat');
+          break;
       }
     } catch (error) {
       this.emit('error', error);
@@ -191,12 +199,12 @@ export class Parser<T> extends EventEmitter {
 export interface Parser<T> {
   on(event: 'ack', listener: (ack: Ack) => void): this;
   on(event: 'packet', listener: (packet: Packet<T>) => void): this;
-  on(event: 'ping' | 'pong', listener: () => void): this;
+  on(event: 'ping' | 'pong' | 'heartbeat', listener: () => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
 
   emit(event: 'ack', ack: Ack): boolean;
   emit(event: 'packet', packet: Packet<T>): boolean;
-  emit(event: 'ping' | 'pong'): boolean;
+  emit(event: 'ping' | 'pong' | 'heartbeat'): boolean;
   emit(event: 'error', error: Error): boolean;
 }
 
@@ -216,7 +224,7 @@ export function build(
   options?: BuildOptions,
 ): Buffer;
 export function build(
-  type: Type.ping | Type.pong,
+  type: Type.ping | Type.pong | Type.heartbeat,
   options?: BuildOptions,
 ): Buffer;
 export function build(type: Type, ...args: any[]): Buffer {
@@ -241,6 +249,7 @@ export function build(type: Type, ...args: any[]): Buffer {
       break;
     case Type.ping:
     case Type.pong:
+    case Type.heartbeat:
       object = {
         type,
       };

@@ -2,8 +2,15 @@ import {Duplex} from 'stream';
 
 import {CryptoOptions, Packet, Parser, Type, build} from './packet';
 
+export const HEARTBEAT_INTERVAL_DEFAULT = 5_000;
+
 export interface StreamJetOptions {
   crypto?: CryptoOptions;
+  heartbeat?:
+    | {
+        interval?: number;
+      }
+    | boolean;
 }
 
 export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
@@ -13,6 +20,9 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
 
   private initialized = false;
 
+  private heartbeatTimer: NodeJS.Timer | undefined;
+  private heartbeatInterval: number | undefined;
+
   constructor(
     readonly socket: TSocket,
     readonly options: StreamJetOptions = {},
@@ -21,8 +31,11 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
       objectMode: true,
     });
 
-    let {crypto: cryptoOptions} = options;
+    let {crypto: cryptoOptions, heartbeat} = options;
 
+    socket.on('pause', this.onSocketPause);
+    socket.on('resume', this.onSocketResume);
+    socket.on('close', this.onSocketClose);
     socket.on('error', this.onError);
 
     let parser = new Parser({crypto: cryptoOptions});
@@ -33,6 +46,12 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
     this.parser = parser;
 
     this.cryptoOptions = cryptoOptions;
+
+    if (heartbeat) {
+      let {interval = HEARTBEAT_INTERVAL_DEFAULT} =
+        heartbeat === true ? {} : heartbeat;
+      this.heartbeatInterval = interval;
+    }
   }
 
   _write(
@@ -57,6 +76,18 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
     }
   }
 
+  private onSocketPause = (): void => {
+    this.tearDownHeartbeat();
+  };
+
+  private onSocketResume = (): void => {
+    this.setUpHeartbeat();
+  };
+
+  private onSocketClose = (): void => {
+    this.tearDownHeartbeat();
+  };
+
   private onSocketData = (data: Buffer): void => {
     this.parser.append(data);
   };
@@ -70,6 +101,24 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
   private onError = (error: Error): void => {
     this.emit('error', error);
   };
+
+  private setUpHeartbeat(): void {
+    if (!this.heartbeatInterval) {
+      return;
+    }
+
+    this.tearDownHeartbeat();
+
+    this.heartbeatTimer = setInterval(() => {
+      this.socket.write(build(Type.ping, {crypto: this.cryptoOptions}));
+    }, this.heartbeatInterval);
+  }
+
+  private tearDownHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+    }
+  }
 }
 
 export interface StreamJet<TIn, TOut, TSocket extends Duplex> {
