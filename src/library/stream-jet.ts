@@ -63,7 +63,13 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
     _encoding: unknown,
     callback: (error?: Error) => void,
   ): void {
-    this.socket.write(
+    let socket = this.socket;
+
+    if (!socket.writable) {
+      return;
+    }
+
+    socket.write(
       build(Type.packet, 0, chunk, {
         crypto: this.cryptoOptions,
       }),
