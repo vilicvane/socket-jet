@@ -33,13 +33,16 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
 
     let {crypto: cryptoOptions, heartbeat} = options;
 
+    this.on('close', this.onClose);
+
     socket.on('close', this.onSocketClose);
-    socket.on('error', this.onError);
+    socket.on('end', this.onSocketEnd);
+    socket.on('error', this.onSocketError);
 
     let parser = new Parser({crypto: cryptoOptions});
 
     parser.on('packet', this.onParserPacket);
-    parser.on('error', this.onError);
+    parser.on('error', this.onParserError);
 
     this.parser = parser;
 
@@ -77,8 +80,33 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
     }
   }
 
+  private onClose = (): void => {
+    let socket = this.socket;
+    let parser = this.parser;
+
+    socket.destroy();
+
+    socket.off('data', this.onSocketData);
+    socket.off('close', this.onSocketClose);
+    socket.off('end', this.onSocketEnd);
+    socket.off('error', this.onSocketError);
+
+    parser.off('packet', this.onParserPacket);
+    parser.off('error', this.onParserError);
+  };
+
   private onSocketClose = (): void => {
+    this.destroy();
+  };
+
+  private onSocketEnd = (): void => {
     this.tearDownHeartbeat();
+    this.end();
+  };
+
+  private onSocketError = (error: Error): void => {
+    this.tearDownHeartbeat();
+    this.destroy(error);
   };
 
   private onSocketData = (data: Buffer): void => {
@@ -91,8 +119,9 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
     }
   };
 
-  private onError = (error: Error): void => {
-    this.emit('error', error);
+  private onParserError = (error: Error): void => {
+    this.socket.end();
+    this.destroy(error);
   };
 
   private setUpHeartbeat(): void {
@@ -124,6 +153,9 @@ export interface StreamJet<TIn, TOut, TSocket extends Duplex> {
     chunk: TOut,
     callback?: (error: Error | null | undefined) => void,
   ): boolean;
+
+  end(callback?: () => void): void;
+  end(chunk: TOut, callback?: () => void): void;
 
   on(event: string, listener: (...args: any[]) => void): this;
   on(event: 'data', listener: (data: TIn) => void): this;
