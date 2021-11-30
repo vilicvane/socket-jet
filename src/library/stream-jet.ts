@@ -34,6 +34,7 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
     let {crypto: cryptoOptions, heartbeat} = options;
 
     this.on('close', this.onClose);
+    this.on('end', this.onEnd);
 
     socket.on('close', this.onSocketClose);
     socket.on('end', this.onSocketEnd);
@@ -99,6 +100,10 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
 
     parser.off('packet', this.onParserPacket);
     parser.off('error', this.onParserError);
+  };
+
+  private onEnd = (): void => {
+    this.socket.end();
   };
 
   private onSocketClose = (): void => {
