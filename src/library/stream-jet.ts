@@ -101,7 +101,7 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
 
   private onSocketEnd = (): void => {
     this.tearDownHeartbeat();
-    this.end();
+    this.destroy();
   };
 
   private onSocketError = (error: Error): void => {
@@ -120,7 +120,7 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
   };
 
   private onParserError = (error: Error): void => {
-    this.socket.end();
+    this.socket.destroy();
     this.destroy(error);
   };
 
