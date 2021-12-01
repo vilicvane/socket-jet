@@ -101,12 +101,12 @@ export class StreamJet<TIn, TOut, TSocket extends Duplex> extends Duplex {
   };
 
   private onSocketClose = (): void => {
-    this.end();
+    this.destroy();
   };
 
   private onSocketEnd = (): void => {
     this.tearDownHeartbeat();
-    this.end();
+    this.destroy();
   };
 
   private onSocketError = (error: Error): void => {
